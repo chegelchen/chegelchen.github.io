@@ -40,7 +40,7 @@
     </style>
 </head>
 <body>
-    <h1>Teachable Machine 模型测试</h1>
+    <h1>Teachable Machine 模型测试1</h1>
     <button onclick="init()">启动模型</button>
     <div id="webcam-container"></div>
     <div id="label-container"></div>
@@ -57,8 +57,8 @@
                 console.log("正在加载模型...");
                 
                 // 修改为 GitHub Pages 上的模型路径
-                const modelURL = "models/model.json";  
-                const metadataURL = "models/metadata.json";
+                const modelURL = "models_KBMouse/model.json";  
+                const metadataURL = "models_KBMouse/metadata.json";
 
                 model = await tmImage.load(modelURL, metadataURL);
                 console.log("模型加载成功！");
