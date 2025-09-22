@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whack-a-Mole</title>
+    <style>
+        /* --- Basic Page Styles --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f8ff; /* Light alice blue background */
+        }
+
+        /* --- Game Title and Info Panel --- */
+        .info-panel {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        /* Author info style */
+        #author-info {
+            color: #555;
+            font-size: 16px;
+            margin-top: -10px;
+        }
+
+        /* Score and time display style */
+        .stats {
+            font-size: 20px;
+            font-weight: bold;
+            color: #d9534f; /* Red font */
+        }
+
+        /* --- Game Board Grid --- */
+        #game-board {
+            display: grid;
+            /* Columns are set dynamically by JavaScript */
+            gap: 15px; /* Gap between holes */
+            background-color: #a07a5f; /* Soil color */
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        /* --- Hole Styles --- */
+        .hole {
+            width: 100px;
+            height: 100px;
+            background-color: #634832; /* Darker color for the hole */
+            border-radius: 50%; /* Make holes circular */
+            border: 5px solid #d2b48c; /* Sandy border */
+            cursor: pointer;
+            position: relative;
+            overflow: hidden; /* Hide parts of the mole that are outside */
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hole:hover {
+            border-color: #f0e68c; /* Highlight border on hover */
+        }
+
+        /* --- Mole Base Style --- */
+        .mole {
+            width: 70%;
+            height: 70%;
+            transition: all 0.2s ease-in-out;
+            animation: rise 0.3s ease-out; /* Mole rising animation */
+        }
+
+        /* --- Mole Shape Modifiers --- */
+        .mole-circle {
+            border-radius: 50%;
+        }
+        .mole-square {
+            border-radius: 10%;
+        }
+
+        /* Keyframe animation for the mole rising up */
+        @keyframes rise {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* --- Start Button Style --- */
+        #startButton {
+            font-size: 20px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background-color: #5cb85c; /* Green color */
+            color: white;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+
+        #startButton:hover {
+            background-color: #4cae4c;
+        }
+
+        #startButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="info-panel">
+        <h1>Whack-a-Mole</h1>
+        <p id="author-info">Author: Your Name | Class: 9-X</p>
+        <h2>Score: <span id="score" class="stats">0</span></h2>
+        <h2>Time Left: <span id="time-left" class="stats">60</span>s</h2>
+    </div>
+
+    <div id="game-board"></div>
+
+    <button id="startButton">Start Game</button>
+
+    <script>
+        // ===============================================================
+        // === GAME CONFIGURATION (You can change these values!) ===
+        // ===============================================================
+
+        /**
+         * Total game time in seconds.
+         * Try changing it to 30, 90, or any number you like.
+         */
+        const GAME_DURATION = 20;
+
+        /**
+         * How often a new mole appears, in milliseconds.
+         * A smaller number means moles appear faster, making the game harder. (1000ms = 1s)
+         */
+        const MOLE_APPEAR_SPEED = 900;
+
+        /**
+         * How long a mole stays visible before hiding, in milliseconds.
+         * A smaller number means you have less time to hit the mole.
+         */
+        const MOLE_LIFESPAN = 1400;
+
+        /**
+         * The size of the game grid (e.g., 3 means a 3x3 grid).
+         * You can change this to 4 for a 4x4 grid.
+         */
+        const GRID_SIZE = 3;
+
+        /**
+         * An array of colors for the moles. Add or remove any CSS colors you want!
+         */
+        const MOLE_COLORS = ['#ff6347', '#4682b4', '#32cd32', '#ffd700', '#6a5acd'];
+        
+        /**
+         * An array of shapes for the moles. These are CSS classes defined in the <style> tag.
+         */
+        const MOLE_SHAPES = ['mole-circle', 'mole-square'];
+        
+        /**
+         * Modify your name and class here to display them on the page.
+         */
+        const AUTHOR_NAME = "Chegel Chen";
+        const AUTHOR_CLASS = "Grade 9 (Class B)";
+
+
+        // ===============================================================
+        // === CORE GAME LOGIC (No need to modify below this line) ===
+        // ===============================================================
+
+        // Get elements from the HTML page
+        const gameBoard = document.getElementById('game-board');
+        const scoreDisplay = document.getElementById('score');
+        const timeLeftDisplay = document.getElementById('time-left');
+        const startButton = document.getElementById('startButton');
+        const authorInfo = document.getElementById('author-info');
+
+        // Initialize game state variables
+        let score = 0;
+        let timeLeft = GAME_DURATION;
+        let moleTimerId = null;
+        let gameTimerId = null;
+
+        // Set author info and initial time on page load
+        authorInfo.textContent = `Author: ${AUTHOR_NAME} | Class: ${AUTHOR_CLASS}`;
+        timeLeftDisplay.textContent = `${GAME_DURATION}`;
+
+        /**
+         * Creates the game grid based on GRID_SIZE.
+         */
+        function createGameBoard() {
+            gameBoard.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 100px)`;
+            gameBoard.innerHTML = ''; // Clear any old grid
+            for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+                const hole = document.createElement('div');
+                hole.classList.add('hole');
+                hole.addEventListener('mousedown', hitMole); // Add click listener to each hole
+                gameBoard.appendChild(hole);
+            }
+        }
+        
+        /**
+         * Makes a mole appear in a random, empty hole.
+         */
+        function appearMole() {
+            const holes = document.querySelectorAll('.hole');
+            const emptyHoles = Array.from(holes).filter(hole => hole.childElementCount === 0);
+
+            if (emptyHoles.length === 0) return; // No empty holes available
+
+            // Pick a random empty hole
+            const randomHole = emptyHoles[Math.floor(Math.random() * emptyHoles.length)];
+            
+            // Create the mole element
+            const mole = document.createElement('div');
+            mole.classList.add('mole');
+            
+            // Assign a random shape and color
+            const randomShape = MOLE_SHAPES[Math.floor(Math.random() * MOLE_SHAPES.length)];
+            const randomColor = MOLE_COLORS[Math.floor(Math.random() * MOLE_COLORS.length)];
+            mole.classList.add(randomShape);
+            mole.style.backgroundColor = randomColor;
+
+            randomHole.appendChild(mole);
+            
+            // Set a timer to make this specific mole disappear after its lifespan
+            setTimeout(() => {
+                if (randomHole.contains(mole)) { // Check if mole wasn't already hit
+                    randomHole.removeChild(mole);
+                }
+            }, MOLE_LIFESPAN);
+        }
+
+        /**
+         * Handles the click event on a hole to check if a mole was hit.
+         */
+        function hitMole(event) {
+             // We check if the clicked element's child is a mole, or if the element itself is a mole.
+            const targetMole = event.target.classList.contains('mole') ? event.target : event.target.querySelector('.mole');
+            if (targetMole) {
+                score++;
+                scoreDisplay.textContent = score;
+                targetMole.remove(); // Remove the mole from the DOM
+            }
+        }
+        
+        /**
+         * Game countdown timer.
+         */
+        function countdown() {
+            timeLeft--;
+            timeLeftDisplay.textContent = `${timeLeft}s`;
+
+            if (timeLeft === 0) {
+                endGame();
+            }
+        }
+
+        /**
+         * Starts the game.
+         */
+        function startGame() {
+            score = 0;
+            timeLeft = GAME_DURATION;
+            scoreDisplay.textContent = score;
+            timeLeftDisplay.textContent = `${timeLeft}`;
+
+            startButton.disabled = true; // Disable button to prevent re-clicks
+
+            moleTimerId = setInterval(appearMole, MOLE_APPEAR_SPEED);
+            gameTimerId = setInterval(countdown, 1000); // Runs every 1 second
+        }
+
+        /**
+         * Ends the game.
+         */
+        function endGame() {
+            clearInterval(moleTimerId);
+            clearInterval(gameTimerId);
+            
+            alert(`Time's up! Your final score is: ${score}`);
+
+            startButton.disabled = false; // Re-enable the start button
+
+            // Clear any remaining moles from the board
+            document.querySelectorAll('.mole').forEach(mole => mole.remove());
+        }
+
+        // Add a click listener to the start button
+        startButton.addEventListener('click', startGame);
+
+        // Create the initial game board when the page loads
+        createGameBoard();
+    </script>
+
+</body>
+</html>
